@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.platzi.qa'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'com.intuit.karate:karate-junit5:1.4.1'
+    testImplementation 'net.masterthought:cucumber-reporting:5.8.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    ['karate.env', 'karate.options'].each { key ->
+        if (System.getProperty(key)) systemProperty key, System.getProperty(key)
+    }
+    testLogging {
+        events 'passed', 'failed', 'skipped'
+    }
+}

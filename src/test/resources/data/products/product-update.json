@@ -1,0 +1,7 @@
+{
+  "title": "Producto QA actualizado",
+  "price": 250,
+  "description": "Producto actualizado desde la automatizacion",
+  "categoryId": 1,
+  "images": ["https://placehold.co/600x400"]
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Producto QA",
+  "price": 150,
+  "description": "Producto Prueba Creado",
+  "categoryId": 1,
+  "images": ["https://placehold.co/600x400"]
+}
