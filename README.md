@@ -1,68 +1,73 @@
-# Automatización API Platzi Fake Store
+## Escenarios adicionales propuestos
+- **Autenticación JWT:** login con credenciales válidas e inválidas,
+  consulta del perfil con token válido, vencido o ausente, y renovación del
+  token con `/auth/refresh-token`.
+- **Reglas de contraseña:** la API exige letras y números, con un mínimo de
+  4 caracteres. Falta cubrir contraseñas con símbolos y en el límite.
+- **Paginación con valores extremos:** `limit` en 0, negativo o muy grande, y
+  `offset` superior al total de productos.
+- **Integridad referencial:** crear un producto con un `categoryId`
+  inexistente. Con `categoryId: 0` la API no devolvió ningún mensaje de
+  validación sobre la categoría.
+- **Límites de longitud** en título, nombre y descripción.
+- **Rendimiento:** una prueba de carga básica, dado que el servicio mostró
+  lentitud en algunas ejecuciones.
 
-Proyecto de pruebas automatizadas para la API https://api.escuelajs.co/api/v1
-(la documentación está en https://fakeapi.platzi.com/). Usé Karate para los
-escenarios, Gradle para compilar y correr, y Cucumber para el reporte.
+## Respuestas al entregable
 
-## Qué necesitas
-- Java 17 o superior (yo lo probé con Java 21)
-- Git
+**1. ¿Cuáles fueron los principales desafíos al implementar las funcionalidades?**
 
-## Cómo correrlo
-Clona el repositorio y desde la carpeta del proyecto ejecuta:
+El principal desafío fue que el comportamiento real de la API no coincidía
+con el esperado. Un recurso inexistente responde 400 en lugar de 404, y un
+PUT con el cuerpo incompleto responde 500. Para no automatizar sobre
+supuestos, exploré cada endpoint manualmente antes de escribir los
+escenarios y fijé los resultados esperados según las respuestas observadas.
+Los casos que se apartan de lo correcto quedaron documentados como hallazgos.
 
-    .\gradlew.bat test      (Windows)
-    ./gradlew test          (Linux o Mac)
+El segundo desafío fue la naturaleza compartida de la API. Los datos cambian
+entre ejecuciones, por lo que un identificador fijo no es confiable. Además,
+un escenario de actualización pasaba en la primera ejecución y fallaba en la
+siguiente, porque un título repetido violaba la restricción de unicidad del
+campo `slug`. Lo resolví creando en cada escenario su propio recurso, con un
+nombre o email único generado en tiempo de ejecución.
 
-La primera vez descarga las dependencias, así que puede tardar un poco.
+**2. ¿Qué técnicas de prueba se usaron y qué enfoque se dio a la automatización?**
 
-## Dónde queda el reporte
-- Cucumber: `build/cucumber-html-reports/overview-features.html`
-- Karate: `build/karate-reports/karate-summary.html`
+Se aplicaron pruebas funcionales positivas y negativas, con datos válidos e
+inválidos. Para los casos negativos se consideraron identificadores
+inexistentes y no numéricos, cuerpos incompletos o con campos vacíos, rangos
+de filtro invertidos y rutas inexistentes. Se cubrieron los códigos 200, 201,
+400, 404 y 500.
 
-Se abren con el navegador.
+En la automatización los escenarios se escriben en Gherkin y los datos de
+entrada se separan en archivos JSON. Los pasos para crear registros se
+reutilizan desde `features/common`, y la URL base se centraliza en
+`karate-config.js`. Los escenarios que modifican o eliminan información
+crean su propio recurso previamente, de modo que son independientes entre sí
+y repetibles.
 
-## Cómo está organizado
-(pega aquí la salida de `tree src /F`)
+**3. ¿Cómo se gestionó la validación de datos y de la estructura del JSON?**
 
-- `features/` tiene los escenarios en Gherkin, uno por servicio: productos,
-  filtros, categorías y usuarios.
-- `features/common/` tiene escenarios que se reutilizan para crear datos.
-  Llevan la etiqueta `@ignore` para que no corran solos.
-- `data/` tiene los JSON de entrada, válidos e inválidos.
-- `schemas/` tiene los esquemas para validar la estructura de las respuestas.
-- `karate-config.js` guarda la URL base.
+La estructura se valida con esquemas JSON en la carpeta `schemas/`, usando
+los marcadores de Karate (`#number`, `#string`, `#array`) y `match each` para
+verificar todos los elementos de una lista. Además de la estructura, cada
+escenario comprueba el código de estado, el header `Content-Type` y valores
+concretos del cuerpo, por ejemplo que el título actualizado sea el enviado.
 
-## Qué se prueba
-Son 25 escenarios con GET, POST, PUT y DELETE: 9 de productos, 5 de filtros,
-5 de categorías y 6 de usuarios. Cada servicio tiene al menos una prueba
-negativa. Se validan los códigos 200, 201, 400, 404 y 500, además de headers,
-cuerpo y estructura del JSON.
+En las respuestas de error se verifican los campos `statusCode`, `error` y
+`message`. Como `message` es un texto en algunos errores y una lista en
+otros, cada escenario negativo valida el formato correspondiente. Para no
+depender de datos fijos, el escenario de consulta por identificador toma el
+primer id del listado.
 
-## Una nota sobre los datos
-La API es pública y la usa más gente, así que los datos cambian. Por eso los
-escenarios que actualizan o borran crean antes su propio registro, con nombre
-o email único, y no tocan datos de otros.
+**4. ¿Qué aprendizajes se obtuvieron y cómo aportan al crecimiento profesional?**
 
-## Lo que encontré en la API
-Estas son diferencias entre lo que esperaba y lo que respondió:
-
-- Pedir un producto, categoría o usuario que no existe responde 400, no 404.
-  El 404 solo aparece cuando la ruta no existe.
-- `GET /users/1` devuelve la contraseña en texto plano.
-- Un PUT con el body incompleto (solo título y precio) devuelve 500. Con el
-  body completo funciona.
-- El DELETE responde 200, pero con `text/html` y el texto `true`, no con JSON.
-- Al repetir un título en un PUT aparece un error de base de datos
-  (`SQLITE_CONSTRAINT_UNIQUE`) con código 400.
-- El campo `message` de los errores a veces es un texto y a veces una lista.
-
-Hay un escenario marcado `@known-bug` que afirma el comportamiento correcto
-y falla por el defecto del PUT. Lo excluí de la ejecución normal para que el
-resultado no quede en rojo por algo de la API.
-
-## Qué más probaría
-(escribe aquí 3 o 4 ideas tuyas)
-
-## Respuestas
-(escribe aquí tus respuestas a las 4 preguntas)
+Reforcé la importancia de explorar un servicio antes de automatizarlo y de
+distinguir entre lo que la API hace y lo que debería hacer. Esa distinción
+me llevó a documentar hallazgos con evidencia, como la contraseña expuesta
+en texto plano o el mensaje de error de base de datos que llega al cliente.
+También profundicé en Karate, Gradle y reportes con Cucumber, en el diseño de
+pruebas independientes y repetibles sobre datos compartidos, y en la lectura
+de fallos para encontrar su causa. Todo esto mejora mi criterio para
+priorizar casos, comunicar defectos con claridad y construir pruebas
+mantenibles.
